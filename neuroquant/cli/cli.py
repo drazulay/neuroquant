@@ -1,0 +1,2 @@
+class NeuroQuantCLI(object):
+    pass
