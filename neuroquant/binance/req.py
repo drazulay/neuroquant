@@ -11,17 +11,8 @@ class BinanceRequest(object):
         self.headers = headers
         self.params = params
 
-    def getApiKey(self):
-        return self.auth.getApiKey()
-
-    def getApiSecret(self):
-        return self.auth.getApiSecret()
-
-    def getBaseUrl(self):
-        return self.auth.getApiBaseUrl()
-
     def getEndpoint(self):
-        return urljoin(self.getBaseUrl(), self.getPath())
+        return urljoin(self.auth.getApiBaseUrl(), self.getPath())
 
     def getHeaders(self):
         return self.prepareHeaders(self.headers)
@@ -95,7 +86,7 @@ class BinancePostRequest(BinanceRequest):
         return requests.post(endpoint, headers=headers, params=params)
 
     def prepareHeaders(self, headers):
-        headers['X-MBX-APIKEY'] = self.getApiKey()
+        headers['X-MBX-APIKEY'] = self.auth.getApiKey()
         return headers
 
     def prepareParams(self, params):
