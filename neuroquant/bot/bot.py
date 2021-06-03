@@ -1,0 +1,2 @@
+class NeuroQuantBot(object):
+    pass
