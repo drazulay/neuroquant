@@ -1,4 +1,5 @@
 import asyncio
+import pickle
 
 from dispatcher import NQDispatcher
 
@@ -28,25 +29,47 @@ class NQServerProto(asyncio.Protocol):
         host, port = transport.get_extra_info('peername')
         self.client_host = host
         self.client_port = port
+        print(f'[{self.client_host}:{self.client_port}] connected')
 
+    def connection_lost(self, exc):
+        print(f'[{self.client_host}:{self.client_port}] disconnected')
+
+    # todo:
+    # send structured data to client based on query:
+    # {
+    #   "commands": [...],      -> list of available commands based on section
+    #   "depth": 1,             -> depth in section tree
+    #   "query": ["help"],      -> last entered query
+    #   "result": {...},        -> result of last entered query
+    #   "prompt": "(algo)> ",   -> prompt to show user
+    #   "section": "algo",      -> currently active section
+    # } 
+    # .. and send it back
+    # 
     def data_received(self, data):
-        try:
-            msg = data.decode()
-            print(f'[{self.client_host}:{self.client_port}] "{msg}"')
+        data = pickle.loads(data)
+        query = data.get('query')
 
-            # todo: some intelligent command processing
-            # todo: minimize attack surface
-            if msg == 'q' or msg == 'quit':
-                self.transport.close()
-                print(f'[{self.client_host}:{self.client_port}] disconnected')
-            else:
-                # dispatch message somewhere
-                # then send back the results
-                result = self.dispatcher.parse(msg)
-                self.transport.write(result)
-        except Exception as e:
-            self.transport.write(e)
+        # user should be able to quit at any time
+        if query[0] == 'quit':
             self.transport.close()
+        else:
+            # parse the data and get modified parts back
+            depth, section, res, cmds = self.dispatcher.dispatch(data)
+            
+            # Set prompt based on active section
+            prompt = f'({section})> '
+            
+            # build new data and pickle it
+            data = pickle.dumps({"commands": cmds,
+                    "depth": depth,
+                    "query": ["none"],
+                    "result": res,
+                    "prompt": prompt,
+                    "section": section})
+
+            # send data to client
+            self.transport.write(data)
 
 if __name__ == '__main__':
     server = NQServer()
