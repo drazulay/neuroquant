@@ -2,6 +2,7 @@ import asyncio
 import pickle
 
 from .dispatcher import NQDispatcher
+from ..cli import NQCommandTree
 
 """
 NQServer
@@ -18,7 +19,12 @@ class NQServer(object):
 
     async def main(self):
         loop = asyncio.get_running_loop()
-        factory = lambda: NQServerProto(NQDispatcher())
+
+        command_tree = NQCommandTree(self.config)
+        command_tree.load()
+
+        factory = lambda: NQServerProto(NQDispatcher(command_tree))
+
         server = await loop.create_server(factory,
                 self.config.get('server_address'),
                 self.config.get('server_port'))
@@ -50,10 +56,14 @@ class NQServerProto(asyncio.Protocol):
     Callback triggered data is received
     """
     def data_received(self, data):
-        data = pickle.dumps(self.dispatcher.dispatch(pickle.loads(data)))
+        state = pickle.loads(data)
+        query = ' '.join(state.get('query'))
+        print(f'[{self.client_host}:{self.client_port}] processing query: {query}')
+        result = pickle.dumps(self.dispatcher.dispatch(state))
         
-        # send data to client
-        self.transport.write(data)
+        # send data to client and close connection
+        self.transport.write(result)
+        self.transport.close()
 
     """
     Callback triggered when a connection is established
@@ -70,13 +80,9 @@ class NQServerProto(asyncio.Protocol):
     """
     def connection_lost(self, exc):
         if isinstance(exc, Exception):
+            self.transport.write(pickle.dumps(exc))
             print(f'[{self.client_host}:{self.client_port}] exception: {exc}')
         print(f'[{self.client_host}:{self.client_port}] disconnected')
 
         self.transport.close()
-
-
-if __name__ == '__main__':
-    server = NQServer()
-    server.start()
 

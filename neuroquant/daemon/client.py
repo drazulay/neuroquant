@@ -44,15 +44,15 @@ class NQClient(object):
             data = pickle.loads(future.result())
 
             result = data.get('result')
-            if result.get('quit') != None:
+            if result.get('quit'):
                 break
-            elif result.get('init') != None:
-                print('Client initialized')
+            elif result.get('init'):
+                print('client initialized')
             else:
                 # show data received
                 print(result)
 
-        print('Quitting..')
+        print('goodbye.')
 
     """
     Start responding to messages
@@ -72,7 +72,6 @@ args:
 
       {
         "commands": [...],      -> list of available commands for section
-        "depth": 1,             -> depth in section tree
         "query": ["help"],      -> last entered query
         "result": {...},        -> result of last entered query
         "prompt": "(algo)> ",   -> prompt to show user
@@ -104,7 +103,5 @@ class NQClientProto(asyncio.Protocol):
     Callback triggered when a connection is lost
     """
     def connection_lost(self, exc):
-        print('disconnected')
-        self.future.set_result(pickle.dumps({"result": {"quit": True}}))
         self.transport.close()
 
