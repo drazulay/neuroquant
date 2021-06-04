@@ -1,0 +1,115 @@
+{
+    "binance": {
+        "auth": {
+            "api_key": "",
+            "api_secret": "",
+            "api_base_url": "https://api.binance.com"
+        }
+    },
+    "cli": {
+        "commands": {
+            "section": "nq",
+            "commands": {
+                "info": {
+                    "description": "Show system information",
+                    "class": "NQCommandSystem",
+                    "method": "info",
+                    "args": [],
+                    "kwargs": {
+                        "key": "+str"
+                    }
+                },
+                "iddqd": {
+                    "description": "God mode",
+                    "class": "NQCommandEaster",
+                    "method": "iddqd",
+                    "args": [],
+                    "kwargs": {
+                        "name": "!str"
+                    }
+                },
+                "idkfa": {
+                    "description": "Keys, full ammo",
+                    "class": "NQCommandEaster",
+                    "method": "idkfa",
+                    "args": [],
+                    "kwargs": {
+                        "name": "!str"
+                    }
+                }
+            },
+            "subsections": [
+                {
+                    "section": "ml",
+                    "commands": {
+                        "config": {
+                            "description": "Configure a model",
+                            "class": "NQCommandML",
+                            "method": "config",
+                            "args": [],
+                            "kwargs": {
+                                "model": "!str",
+                                "param": "!str",
+                                "value": "!str"
+                            }
+                        },
+                        "train": {
+                            "description": "Train a model",
+                            "class": "NQCommandML",
+                            "method": "train",
+                            "args": [],
+                            "kwargs": {
+                                "model": "!str"
+                            }
+                        },
+                        "validate": {
+                            "description": "Validate a model",
+                            "class": "NQCommandML",
+                            "method": "validate",
+                            "args": [],
+                            "kwargs": {
+                                "model": "!str"
+                            }
+                        },
+                        "activate": {
+                            "description": "Activate model as prediction source",
+                            "class": "NQCommandML",
+                            "method": "activate",
+                            "args": [],
+                            "kwargs": {
+                                "model": "!str",
+                                "weight": "float"
+                            }
+                        },
+                        "deactivate": {
+                            "description": "Deactivate model as prediction source",
+                            "class": "NQCommandML",
+                            "method": "deactivate",
+                            "args": [],
+                            "kwargs": {
+                                "model": "!str"
+                            }
+                        }
+                    },
+                    "subsections": []
+                },
+                {
+                    "section": "binance",
+                    "commands": {
+                        "config": {
+                            "description": "Configure the binance API",
+                            "class": "NQCommandBinance",
+                            "method": "config",
+                            "args": [],
+                            "kwargs": {
+                                "param": "!str",
+                                "value": "!str"
+                            }
+                        }
+                    },
+                    "subsections": []
+                }
+            ]
+        }
+    }
+}
