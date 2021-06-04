@@ -1,7 +1,7 @@
 import json
 
-from util import logger
-from req import BinanceGetRequest, BinancePostRequest
+from .util import logger
+from .req import BinanceGetRequest, BinancePostRequest
 
 
 class GetServerTime(BinanceGetRequest):

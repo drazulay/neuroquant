@@ -1,7 +1,7 @@
 import asyncio
 import pickle
 
-from dispatcher import NQDispatcher
+from .dispatcher import NQDispatcher
 
 """
 NQServer

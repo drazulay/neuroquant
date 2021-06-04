@@ -12,7 +12,7 @@ class NQDispatcher(object):
     def __init__(self, command_tree):
         self.command_tree = command_tree
 
-    def get_initial_data(self)
+    def get_initial_data(self):
         self.command_tree.load()
         section = self.command_tree.get_section()
 
@@ -59,7 +59,7 @@ class NQDispatcher(object):
         if not len(query):
             raise ValueError(f'zero length query')
         if query[0] not in self.get_commands():
-            raise ValueError(f'query {query[0]} not valid for section {self.get_section()}'})
+            raise ValueError(f'query {query[0]} not valid for section {self.get_section()}')
 
 
     def get_commands(self):

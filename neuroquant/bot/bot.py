@@ -1,4 +1,4 @@
-from algo import EchoStateNet
+from ..algo import EchoStateNet
 
 class NQBot(object):
     pass

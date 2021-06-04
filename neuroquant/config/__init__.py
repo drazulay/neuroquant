@@ -1,3 +1,3 @@
-from config import NQConfig
+from .config import NQConfig
 
 __all__ = [NQConfig]

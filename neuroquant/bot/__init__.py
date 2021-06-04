@@ -1,3 +1,3 @@
-from bot import NQBot
+from .bot import NQBot
 
 __all__ = [NQBot]

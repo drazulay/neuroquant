@@ -1,8 +1,11 @@
 import json
 import requests
-from util import timestamp, logger
-from exceptions import BinanceException
+
 from urllib.parse import urljoin, urlencode
+
+from .exceptions import BinanceException
+from .util import timestamp, logger
+
 
 class BinanceRequest(object):
     def __init__(self, nonce=0, auth=None, headers={}, params=None):
