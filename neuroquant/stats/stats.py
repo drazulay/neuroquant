@@ -1,2 +1,2 @@
-class TradeStats(object):
+class NQStats(object):
     pass

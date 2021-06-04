@@ -1,3 +1,3 @@
-from stats import TradeStats
+from stats import NQStats
 
-__all__ = [TradeStats]
+__all__ = [NQStats]

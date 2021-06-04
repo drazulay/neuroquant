@@ -1,3 +1,3 @@
-from bot import NeuroQuantBot
+from bot import NQBot
 
-__all__ = [NeuroQuantBot]
+__all__ = [NQBot]

@@ -1,6 +1,6 @@
 from .binance import BinanceAPI, BinanceAuth
-from .bot import NeuroQuantBot
-from .cli import NeuroQuantCLI
-from .stats import TradeStats
+from .bot import NQBot
+from .daemon import NQClient, NQServer
+from .stats import NQStats
 
-__all__ = [BinanceAPI, BinanceAuth, NeuroQuantBot, NeuroQuantCLI, TradeStats]
+__all__ = [BinanceAPI, BinanceAuth, NQBot, NQClient, NQServer, NQStats]
