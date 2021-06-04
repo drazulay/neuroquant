@@ -1,35 +1,44 @@
 import asyncio
 
-
-class EchoClientProtocol(asyncio.Protocol):
-    def __init__(self, message, on_receive):
+class NQClient(asyncio.Protocol):
+    def __init__(self, message, future):
         self.message = message
-        self.on_receive = on_receive
+        self.future = future
 
     def connection_made(self, transport):
         transport.write(self.message.encode())
 
     def data_received(self, data):
-        self.on_receive.set_result(f'{data.decode()}')
+        self.future.set_result(f'{data.decode()}')
+
+    def connection_lost(self, exc):
+        self.future.set_result("%quit")
 
 
 async def main():
-    # Get a reference to the event loop as we plan to use
-    # low-level APIs.
+    protocol_factory = lambda: NQClient(data, future)
+
     loop = asyncio.get_running_loop()
 
-    # Wait until the protocol signals that the connection
-    # is lost and close the transport.
     while True:
-        on_receive = loop.create_future()
-        transport, protocol = await loop.create_connection(
-                lambda: EchoClientProtocol(input('> '), on_receive), '127.0.0.1', 8181)
-        await on_receive
-        if on_receive.result() == 'quit':
+        data = input('> ')
+        future = loop.create_future()
+        
+        # wait for protocol to couple with transport
+        # todo: get host/port from json file
+        transport, protocol = await loop.create_connection(protocol_factory,
+                '127.0.0.1', 8181)
+
+        # wait for data
+        await future
+
+        data = future.result()
+        if data == '%quit':
             break
-        print(on_receive.result())
+
+        # show data received
+        print(data)
 
     print('Quitting..')
-    transport.close()
 
 asyncio.run(main())

@@ -1,38 +1,54 @@
 import asyncio
 
+from dispatcher import NQDispatcher
 
-class EchoServerProtocol(asyncio.Protocol):
+class NQServer(object):
+    async def main(self):
+        loop = asyncio.get_running_loop()
+
+        protocol_factory = lambda: NQServerProto(NQDispatcher())
+        server = await loop.create_server(protocol_factory, '127.0.0.1', 8181)
+
+        async with server:
+            await server.serve_forever()
+
+    def start(self):
+        asyncio.run(self.main())
+
+class NQServerProto(asyncio.Protocol):
+    def __init__(self, dispatcher, *args, **kwargs):
+        self.dispatcher = dispatcher
+        self.client_host = None
+        self.client_port = None
+
+        super().__init__(*args, **kwargs)
+
     def connection_made(self, transport):
-        peername = transport.get_extra_info('peername')
-        print('Connection from {}'.format(peername))
         self.transport = transport
+        host, port = transport.get_extra_info('peername')
+        self.client_host = host
+        self.client_port = port
 
     def data_received(self, data):
-        message = data.decode()
-        print(f'<< dispatching "{message}"')
+        try:
+            msg = data.decode()
+            print(f'[{self.client_host}:{self.client_port}] "{msg}"')
 
-        if message == 'quit':
-            self.transport.write(data)
+            # todo: some intelligent command processing
+            # todo: minimize attack surface
+            if msg == 'q' or msg == 'quit':
+                self.transport.close()
+                print(f'[{self.client_host}:{self.client_port}] disconnected')
+            else:
+                # dispatch message somewhere
+                # then send back the results
+                result = self.dispatcher.parse(msg)
+                self.transport.write(result)
+        except Exception as e:
+            self.transport.write(e)
             self.transport.close()
-        else:
-            # do something with message
-            # then send back the results
-            result = b'some cool results'
-            print(f'>> {result}')
-            self.transport.write(result)
 
-
-async def main():
-    # Get a reference to the event loop as we plan to use
-    # low-level APIs.
-    loop = asyncio.get_running_loop()
-
-    server = await loop.create_server(
-        lambda: EchoServerProtocol(),
-        '127.0.0.1', 8181)
-
-    async with server:
-        await server.serve_forever()
-
-asyncio.run(main())
+if __name__ == '__main__':
+    server = NQServer()
+    server.start()
 
