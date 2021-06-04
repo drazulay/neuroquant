@@ -1,0 +1,2 @@
+class EchoStateNetwork(object):
+    pass
