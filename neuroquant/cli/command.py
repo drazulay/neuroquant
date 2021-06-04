@@ -14,6 +14,9 @@ class NQCommand(object):
         self.definition = definition
         super().__init__()
 
+    def get_description(self):
+        return self.definition.get('description')
+
     """
     Returns result of calling method on NQCommand subclass intance with args
     and kwargs, or a dict with errors ({"errors":[...]}) if:
@@ -23,22 +26,23 @@ class NQCommand(object):
         - the method does not exist in the NQCommand subclass
         - the method raises an exception when called with args and kwargs
     """
-    def execute(self, method, *args, **kwargs):
+    def execute(self, *args, **kwargs):
         errors = []
         
+        print(self.definition)
+        print(args, kwargs)
         # check whether we have all required positional arguments
-        n_args_req = len(filter(lambda arg: arg.startswith('!'), self.definition.args))
+        n_args_req = len(list(filter(lambda arg: arg.startswith('!'),
+            self.definition.get('args'))))
         n_args = len(args)
-        if n_args != n_args_req
+        if n_args != n_args_req:
             errors.append(f'{n_args_req} positional arguments required, {n_args} passed')
 
-         and cast to
-        # specified data types
-        cast_kwargs = {}
-        for k, mod in self.definition.kwargs.items():
+        # cast to specified data types
+        for k, mod in self.definition.get('kwargs').items():
             # if the ! modifier is present the keyword argument is required
             if mod.find('!') >= 0 and k not in kwargs:
-                errors.append(f'keyword argument {arg.name} is required')
+                errors.append(f'keyword argument {k} is required')
                 continue
 
             # arg value
@@ -57,7 +61,7 @@ class NQCommand(object):
 
             # some asshat protection because we eval the dtype, yolo!
             pattern = re.compile('[\W_]+', re.UNICODE)
-            pattern.sub('', string.printable)
+            pattern.sub('', printable)
             dtype = ''.join(pattern.split(dtype))
 
             # map the datatype to the value
@@ -70,8 +74,10 @@ class NQCommand(object):
             kwargs[k] = mod
 
         if errors == []:
-            # try to call the method or catch and return the error messages
+            # try to call the method on the concrete class or catch and return
+            # the error messages
             try:
+                method = self.definition.get('method')
                 return {"result": getattr(self, method)(*args, **kwargs)}
             except AttributeError as e:
                 errors.append(str(e))
