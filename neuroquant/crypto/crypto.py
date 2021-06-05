@@ -16,7 +16,7 @@ Explanation:
     I hope... this implements an elleptic curve diffie-hellman ephemeral type
     key exchange (ECDHE).
 
-    see: https://www.ecdhe.com/
+    see: https://en.wikipedia.org/wiki/Elliptic-curve_Diffie%E2%80%93Hellman
 
     Two peers, Peer A and Peer B, both instantiate an NQCryptoPeer object.
 
