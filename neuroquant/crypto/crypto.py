@@ -61,7 +61,7 @@ class NQCryptoPeer(NQCryptoPeer):
         return self._fernet_key
 
     def _get_peer(self, peer_pubkey):
-        peer = self.peers.get(peer_pubkey)
+        peer = self._peers.get(peer_pubkey)
         if peer is None:
             raise Exception('Handshake not performed for key: {peer_pubkey}')
 
