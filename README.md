@@ -44,6 +44,7 @@ In general:
 - ip restriction for server
 - finish binance api
 - 'test mode' where binance calls are not actually made
+- collect statistics on trades/funds and provide some analytics commands
 - implement bot as a client and give it its own set of commands for using the binance api
 - a working (sklearn/pytorch?) model for time series prediction
 - backtesting for models
