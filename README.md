@@ -45,11 +45,17 @@ In general:
 - echo state network for time series prediction
 
 Found in source:
-./daemon/dispatcher.py-        # - pretty output with full help
-./daemon/dispatcher.py-        # - help on keyword
-./daemon/client.py-            # - get 'renderer' to use from received data and use that to render the result in the way the server intends
-./daemon/client.py-            # - encrypt communication
-./daemon/client.py-            # - sign messages w. hmac
-./daemon/client.py-            # - compression
-./daemon/client.py-            # - identify as user or as bot, each gets different sets of commands
-./cli/command_tree.py:         # - ur dangerops (eval used to instantiate command classes from config)
+
+/daemon/dispatcher.py:
+- pretty output with full help
+- help on keyword
+
+/daemon/client.py:
+- get 'renderer' to use from received data and use that to render the result in the way the server intends
+- encrypt communication
+- sign messages w. hmac
+- compression
+- identify as user or as bot, each gets different sets of commands
+
+/cli/command_tree.py:
+- ur dangerops (eval used to instantiate command classes from config)
