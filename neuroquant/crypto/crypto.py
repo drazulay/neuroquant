@@ -13,6 +13,11 @@ This class represents a peer that wishes to engage in encrypted communication
 with other peers.
 
 Explanation:
+    I hope... this implements an elleptic curve diffie-hellman ephemeral type
+    key exchange (ECDHE).
+
+    see: https://www.ecdhe.com/
+
     Two peers, Peer A and Peer B, both instantiate an NQCryptoPeer object.
 
     Peer A calls NQCryptoPeer.get_public_key() to get its public key and then
@@ -28,8 +33,6 @@ Explanation:
     At this point both peers should have the same shared secret stored locally.
     This shared secret has been turned into identical fernet keys that both
     peers can use to encrypt and decrypt messages from each other.
-
-    YMMV, I've never built anything like this.
 """
 class NQCryptoPeer(NQCryptoPeer):
     def __init__(self, peers={}, *args, **kwargs):
