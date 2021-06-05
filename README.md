@@ -65,4 +65,4 @@ Found in source:
 - identify as user or as bot, each gets different sets of commands
 
 /cli/command_tree.py:
-- ur dangerops (eval used to instantiate command classes from config, sanitize or find another way)
+- ur dangerops (eval used to instantiate command classes from config, use getattr or importlib)
