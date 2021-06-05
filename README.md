@@ -39,10 +39,14 @@ drazulay@dmbp Developer/drazulay/nq (git)-[master] % python neuroquant.py --daem
 ## TODO (non-exhaustive)
 
 In general:
-- implement bot as a client
+
+- make utils a toplevel module and use the logger everywhere instead of print()
 - finish binance api
+- 'test mode' where binance calls are not actually made
+- implement bot as a client and give it its own set of commands for using the binance api
 - a working (sklearn/pytorch?) model for time series prediction
-- echo state network for time series prediction
+- backtesting for models
+- echo state network for time series prediction (just cause)
 
 Found in source:
 
@@ -58,4 +62,4 @@ Found in source:
 - identify as user or as bot, each gets different sets of commands
 
 /cli/command_tree.py:
-- ur dangerops (eval used to instantiate command classes from config)
+- ur dangerops (eval used to instantiate command classes from config, sanitize or find another way)
