@@ -41,6 +41,7 @@ drazulay@dmbp Developer/drazulay/nq (git)-[master] % python neuroquant.py --daem
 In general:
 
 - make utils a toplevel module and use the logger everywhere instead of print()
+- ip restriction for server
 - finish binance api
 - 'test mode' where binance calls are not actually made
 - implement bot as a client and give it its own set of commands for using the binance api
