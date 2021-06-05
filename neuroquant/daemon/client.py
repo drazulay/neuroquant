@@ -50,6 +50,9 @@ class NQClient(object):
                 print('client initialized')
             else:
                 # show data received
+                # todo
+                # - get 'renderer' to use from received data and use that to
+                #   render the result in the way the server intends
                 print(result)
 
         print('goodbye.')
@@ -58,6 +61,11 @@ class NQClient(object):
     Start responding to messages
     """
     def start(self):
+        # todo:
+        # - encrypt communication
+        # - sign messages w. hmac
+        # - compression
+        # - identify as user or as bot, each gets different sets of commands
         asyncio.run(self.main({'query': ['init'], 'result': {}}))
 
 
