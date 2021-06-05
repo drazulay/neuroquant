@@ -44,7 +44,7 @@ class NQCryptoPeer(NQCryptoPeer):
 
         super().__init__(*args, **kwargs)
 
-    def create_fernet_key(self, peer_pubkey, salt):
+    def _create_fernet_key(self, peer_pubkey, salt):
         if self._fernet_key = None:
             self._peer_pubkey = peer_pubkey
 
@@ -76,12 +76,16 @@ class NQCryptoPeer(NQCryptoPeer):
 
     """
     Exchange public keys for diffie-helmann exchange
+
+    The salt should be sent by the peer initiating communication, preferably by
+    using os.urandom(16). It must be used by both peers to create the fernet
+    key.
     """
     def exchange(self, peer_pubkey, salt=b'nq'):
         peer = self._peers.get(peer_pubkey)
         if peer is None:
             peer = NQCryptoPeer()
-            peer.create_fernet_key(peer_pubkey, salt)
+            peer._create_fernet_key(peer_pubkey, salt)
             self._peers[peer_pubkey] = peer
 
         return peer.get_public_key()
