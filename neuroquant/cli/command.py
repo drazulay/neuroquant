@@ -65,13 +65,13 @@ class NQCommand(object):
             dtype = ''.join(pattern.split(dtype))
 
             # map the datatype to the value
-            v = map(eval(dtype), v)
+            v = [*map(eval(dtype), v)]
 
             # if we have a length=1 list use the 1st element
-            if len(mod) == 1:
-                mod = mod.pop()
+            if len(v) == 1:
+                v = v.pop()
 
-            kwargs[k] = mod
+            kwargs[k] = v
 
         if errors == []:
             # try to call the method on the concrete class or catch and return

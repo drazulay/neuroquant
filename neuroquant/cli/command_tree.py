@@ -1,4 +1,4 @@
-from .command import NQCommand
+from .commands import *
 
 """
 NQSectionNode
@@ -9,7 +9,8 @@ Instantiates NQCommand instances for each command in the section
 class NQSectionNode(object):
     def __init__(self, section, commands, parent=None):
         for k, definition in commands.items():
-            commands[k] = NQCommand(definition)
+            # todo: ur dangerops
+            commands[k] = eval(f'{definition.get("class")}(definition)')
 
         self.commands = commands
         self.parent = parent
