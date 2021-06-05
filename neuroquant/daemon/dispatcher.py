@@ -1,3 +1,5 @@
+import re
+
 """
 NQDispatcher
 
@@ -11,70 +13,71 @@ class NQDispatcher(object):
 
     def __init__(self, command_tree):
         self.command_tree = command_tree
-        self.global_commands = ["help", "quit", "back"]
-
-    def get_initial_data(self):
-        section = self.command_tree.get_root().get_section()
-
-        return {"commands": self.command_tree.get_commands(section),
-                "query": [],
-                "result": {"init": True},
-                "prompt": self.get_prompt(section),
-                "section": section}
+        self.global_commands = ["init", "help", "quit", "back"]
 
     def dispatch(self, data):
         query = data.get('query')
-        if not len(query):
-            raise ValueError(f'zero length query')
-
-        command = query[0]
-
-        if command == 'init':
-            return self.get_initial_data()
-
-        if command == 'quit':
-            data['result'] = {"quit": True}
-            return data
-
         section = data.get('section')
-        commands = self.command_tree.get_commands(section)
-        command_keys = list(commands.keys())
 
-        if command == 'back':
-            node = self.command_tree.get_node(section).get_parent()
-            section = node.get_section()
-            commands = node.get_commands()
+        op = query.pop(0)
+
+        if op in self.global_commands:
+            return self.handle_global_command(op, data)
 
         sections = self.command_tree.get_sections()
-        if command in sections:
-            section = command
-            commands = self.command_tree.get_commands(section)
+        if op in [*sections]:
+            return self.create_message(op)
 
-        # todo: pretty output with full help
-        if command == 'help':
-            command_keys.extend(self.global_commands)
-            data['result'] = {"commands": command_keys, "sections": sections}
-            return data
-        
-        if command not in command_keys:
-            raise ValueError(f'query {command} not valid for section {self.get_section()}')
+        commands = self.command_tree.get_commands(section)
+        if op not in [*commands]:
+            raise ValueError(
+                    f'query {op} not valid for section {section}')
 
-        command_instance = commands[command]
-        args, kwargs = self.parse_query(query[1:])
-        result = command_instance.execute(*args, **kwargs)
+        command_instance = commands[op]
+        args, kwargs = self.parse_query_args(query)
 
+        return self.create_message(data.get('section'),
+                result=command_instance.execute(*args, **kwargs))
+
+    def create_message(self, section, query=[], result={}):
         return {"commands": self.command_tree.get_commands(section),
                 "query": query,
                 "result": result,
-                "prompt": self.get_prompt(section),
+                "prompt": f'({section})> ',
                 "section": section}
 
-    def parse_query(self, query):
+    def handle_global_command(self, cmd, data):
+        section = data.get('section')
+
+        if cmd == 'init':
+            section = self.command_tree.get_root().get_section()
+            return self.create_message(section, result={"init": True})
+
+        if cmd == 'quit':
+            return self.create_message(section, result={"quit": True})
+
+        if cmd == 'back':
+            node = self.command_tree.get_node(section).get_parent()
+            return self.create_message(node.get_section())
+                    
+        # todo:
+        # - pretty output with full help
+        # - help on keyword
+        if cmd == 'help':
+            commands = [*self.command_tree.get_commands(section).keys()]
+            commands += self.global_commands
+            data['result'] = {
+                    "commands": commands,
+                    "sections": self.command_tree.get_sections()}
+            return data
+
+    def parse_query_args(self, query):
         args = []
         kwargs = {}
 
         for part in query:
             if part.find('=') >= 0:
+                part = re.sub('[\=]+', '=', part).strip('=')
                 k, v = part.split('=')
                 kwargs[k] = v
             else:
@@ -82,8 +85,3 @@ class NQDispatcher(object):
 
         return (args, kwargs)
 
-    def execute_command(self, command, *args):
-        return 
-
-    def get_prompt(self, section):
-        return f'({section})> '

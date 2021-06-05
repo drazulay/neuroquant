@@ -1,5 +1,6 @@
 import asyncio
 import pickle
+import traceback
 
 from .dispatcher import NQDispatcher
 from ..cli import NQCommandTree
@@ -59,10 +60,19 @@ class NQServerProto(asyncio.Protocol):
         state = pickle.loads(data)
         query = ' '.join(state.get('query'))
         print(f'[{self.client_host}:{self.client_port}] processing query: {query}')
-        result = pickle.dumps(self.dispatcher.dispatch(state))
         
+        try:
+            result = self.dispatcher.dispatch(state)
+        except Exception as e:
+            print(f'[{self.client_host}:{self.client_port}] exception: {e}')
+            traceback.print_exc()
+        
+            state['query'] = []
+            state['result'] = {"errors": [e]}
+            result = state
+
         # send data to client and close connection
-        self.transport.write(result)
+        self.transport.write(pickle.dumps(result))
         self.transport.close()
 
     """
