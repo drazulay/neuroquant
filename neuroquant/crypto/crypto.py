@@ -113,14 +113,14 @@ class NQCryptoPeer(object):
     """
     def encrypt(self, data, peer_pubkey=None):
         cipher = self._get_peer(peer_pubkey)
-        return f.encrypt(pickle.dumps(data))
+        return cipher.encrypt(pickle.dumps(data))
 
     """
     Decrypt a message from peer to which peer_pubkey belongs
     """
     def decrypt(self, data, peer_pubkey=None):
         cipher = self._get_peer(peer_pubkey)
-        return pickle.loads(f.decrypt(data))
+        return pickle.loads(cipher.decrypt(data))
 
 if __name__ == '__main__':
     peerA = NQCryptoPeer()
