@@ -13,8 +13,8 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 """
 NQCryptoClient
 
-This class represents a peer that wishes to engage in encrypted communication
-with a single peer.
+This class represents a client that wishes to engage in encrypted communication
+with a server.
 """
 class NQCryptoClient(object):
     def __init__(self, label=''):
@@ -88,8 +88,8 @@ class NQCryptoClient(object):
 """
 NQCryptoServer
 
-This class can associate with multiple peers by their public keys, using unique
-keypairs for the key exchanges with each of them.
+This class acts as a server that can associate multiple peers by their public
+keys, using unique keypairs for the key exchanges with each of them.
 """
 class NQCryptoServer(NQCryptoClient):
     def __init__(self, *args, **kwargs):
