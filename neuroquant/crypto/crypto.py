@@ -1,9 +1,13 @@
 import pickle
+import base64
+import time
+import os
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 
 """
@@ -34,75 +38,102 @@ Explanation:
     This shared secret has been turned into identical fernet keys that both
     peers can use to encrypt and decrypt messages from each other.
 """
-class NQCryptoPeer(NQCryptoPeer):
+class NQCryptoPeer(object):
     def __init__(self, peers={}, *args, **kwargs):
-        self._peers = peers
-
-        self._privkey = ec.generate_private_key(ec.SECP384R1())
-        self._pubkey = self.privkey.public_key()
-        self._fernet_key = None
-
         super().__init__(*args, **kwargs)
 
-    def _create_fernet_key(self, peer_pubkey, salt):
-        if self._fernet_key = None:
-            self._peer_pubkey = peer_pubkey
+        self._peers = peers
+        self._shared_key = None
 
-            # key derivation function
-            kdf = PBKDF2HMAC(
-                    algorithm=hashes.SHA256(),
-                    length=32,
-                    salt=salt,
-                    iterations=100000)
-            
-            # derived key
-            key = kdf.derive(self._privkey.exchange(ec.ECDH(), peer_pubkey))
+        self._generate_keypair()
 
-            self._fernet_key = base64.urlsafe_b64encode(key)
-
-    def _get_fernet_key(self):
-        return self._fernet_key
 
     def _get_peer(self, peer_pubkey):
         peer = self._peers.get(peer_pubkey)
         if peer is None:
-            raise Exception('Handshake not performed for key: {peer_pubkey}')
-
+            raise Exception(f'Handshake not performed for key: {peer_pubkey}')
         return peer
 
+    def _load_peer_pubkey(self, peer_pubkey):
+        return serialization.load_der_public_key(peer_pubkey)
 
-    def get_public_key(self):
+    def _generate_keypair(self, salt=b'nq'):
+        print('Generating keypair..')
+        self._privkey = X25519PrivateKey.generate()
+        time.sleep(1.0 / sum(list(os.urandom(32))))
+        self._pubkey = self._privkey.public_key()
+        time.sleep(1.0 / sum(list(os.urandom(32))))
+        print(f'Public key: {self.get_public_key()}')
+
+    def create_cipher_key(self, salt):
+            print('Creating shared cipher key..')
+            # derive key
+            kdf = HKDF(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=salt,
+                info=None,
+            )
+            derived_key = kdf.derive(self._shared_key)
+            
+            time.sleep(1.0 / sum(list(os.urandom(32))))
+            return base64.urlsafe_b64encode(derived_key)
+
+    def get_public_key(self, serialized=True):
+        if serialized:
+            return self._pubkey.public_bytes(
+                    format=serialization.PublicFormat.SubjectPublicKeyInfo,
+                    encoding=serialization.Encoding.DER)
+
         return self._pubkey
 
     """
     Exchange public keys for diffie-helmann exchange
 
+    TODO: Use a different keypair with each peer to prevent patterns in the
+          encrypted data. Is this still a thing with Fernet (uses HMAC)?
+
     The salt should be sent by the peer initiating communication, preferably by
     using os.urandom(16). It must be used by both peers to create the fernet
     key.
     """
-    def exchange(self, peer_pubkey, salt=b'nq'):
-        peer = self._peers.get(peer_pubkey)
-        if peer is None:
-            peer = NQCryptoPeer()
-            peer._create_fernet_key(peer_pubkey, salt)
-            self._peers[peer_pubkey] = peer
+    def exchange(self, pubkey, salt=b'nq'):
+        peer_pubkey = self._load_peer_pubkey(pubkey)
+        print('Performing Diffie-Hellman exchange..')
+        # diffie-hellman key exchange
+        self._shared_key = self._privkey.exchange(peer_pubkey)
+        time.sleep(1.0 / sum(list(os.urandom(32))))
+        self._peers[pubkey] = self.create_cipher_key(salt)
+        time.sleep(1.0 / sum(list(os.urandom(32))))
 
-        return peer.get_public_key()
+        return self.get_public_key()
 
     """
     Encrypt a message for peer to which peer_pubkey belongs
     """
-    def encrypt(self, peer_pubkey, data):
-        peer = self._get_peer(peer_pubkey)
-        f = Fernet(peer._get_fernet_key())
+    def encrypt(self, data, peer_pubkey=None):
+        cipher_key = self._get_peer(peer_pubkey)
+        f = Fernet(cipher_key)
         return f.encrypt(pickle.dumps(data))
 
     """
     Decrypt a message from peer to which peer_pubkey belongs
     """
-    def encrypt(self, peer_pubkey, token):
-        peer = self._get_peer(peer_pubkey)
-        f = Fernet(peer._get_fernet_key())
+    def decrypt(self, data, peer_pubkey=None):
+        cipher_key = self._get_peer(peer_pubkey)
+        f = Fernet(cipher_key)
         return pickle.loads(f.decrypt(data))
+
+if __name__ == '__main__':
+    peerA = NQCryptoPeer()
+    peerB = NQCryptoPeer()
+
+    pubB = peerB.exchange(peerA.get_public_key())
+    pubA = peerA.exchange(peerB.get_public_key())
+
+    enc = peerA.encrypt('hello', peer_pubkey=pubB)
+    print(enc)
+    dec = peerB.decrypt(enc, peer_pubkey=pubA)
+    print(dec)
+
 
