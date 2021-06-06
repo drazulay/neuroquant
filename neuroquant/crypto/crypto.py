@@ -17,37 +17,13 @@ This class represents a client that wishes to engage in encrypted communication
 with a server.
 """
 class NQCryptoClient(object):
+
     def __init__(self):
         self._privkey = self._create_privkey()
         self._pubkey = self._privkey.public_key()
 
         self._cipher = None
         self._assoc_pubkey = None
-
-    def _randomsleep(self):
-        time.sleep(1.0 / sum(list(os.urandom(32))))
-
-    def _unserialize_pubkey(self, pubkey):
-        return serialization.load_der_public_key(pubkey)
-
-    def _create_privkey(self):
-        self._randomsleep()
-        return X25519PrivateKey.generate()
-
-    def _create_cipher(self,
-            salt,
-            length=32,
-            algorithm=hashes.SHA256(),
-            info=None):
-
-        self._randomsleep()
-        return Fernet(base64.urlsafe_b64encode(HKDF(
-            algorithm=algorithm,
-            length=length,
-            salt=salt,
-            info=info).derive(
-                self._privkey.exchange(
-                    self._unserialize_pubkey(self._assoc_pubkey)))))           
 
     """
     Associate a server using its public key
@@ -65,23 +41,79 @@ class NQCryptoClient(object):
 
     """
     Encrypt a message
+
+    args:
+        - message: the message to be encrypted
     """
     def encrypt(self, message):
-        return self._cipher.encrypt(pickle.dumps(message))
+        #print(f'ENCRYPT: {message}')
+        if self._cipher is not None:
+            return self._cipher.encrypt(pickle.dumps(message))
 
     """
     Decrypt a message
+
+    args:
+        - message: the message to be decrypted
     """
     def decrypt(self, message):
-        return pickle.loads(self._cipher.decrypt(message))
+        #print(f'DECRYPT: {message}')
+        if self._cipher is not None:
+            return pickle.loads(self._cipher.decrypt(message))
 
-    def get_public_key(self, serialized=True):
-        if serialized:
-            return self._pubkey.public_bytes(
-                    format=serialization.PublicFormat.SubjectPublicKeyInfo,
-                    encoding=serialization.Encoding.DER)
+    """
+    Return the public key that the server can use to associate with the client
+    """
+    def get_public_key(self):
+        return self._pubkey.public_bytes(
+                format=serialization.PublicFormat.SubjectPublicKeyInfo,
+                encoding=serialization.Encoding.DER)
 
-        return self._pubkey
+    """
+    Sleep a short random time
+    """
+    def _randomsleep(self):
+        time.sleep(1.0 / sum(list(os.urandom(32))))
+
+    """
+    Unserialize a public key
+
+    args:
+        - pubkey: a DER-format serialized public key
+    """
+    def _unserialize_pubkey(self, pubkey):
+        return serialization.load_der_public_key(pubkey)
+
+    """
+    Create a curve25519 private key for key agreement
+    """
+    def _create_privkey(self):
+        self._randomsleep()
+        return X25519PrivateKey.generate()
+
+    """
+    Create a Fernet cipher based on the curve25519 Diffie-Hellman shared secret
+
+    args:
+        - salt:      a bytestring for the salt
+        - length:    the desired key length
+        - algorithm: the desired hash algorithm
+        - info:      additional information to embed in the cipher
+    """
+    def _create_cipher(self,
+            salt,
+            length=32,
+            algorithm=hashes.SHA256(),
+            info=None):
+
+        self._randomsleep()
+        return Fernet(base64.urlsafe_b64encode(HKDF(
+            algorithm=algorithm,
+            length=length,
+            salt=salt,
+            info=info).derive(
+                self._privkey.exchange(
+                    self._unserialize_pubkey(self._assoc_pubkey)))))           
 
 
 """
@@ -91,31 +123,34 @@ This class acts as a server that can associate multiple peers by their public
 keys, using unique keypairs for the key exchanges with each of them.
 """
 class NQCryptoServer(NQCryptoClient):
+
     def __init__(self, *args, **kwargs):
         self._clients = {}
 
         super().__init__(*args, **kwargs)
 
+    """
+    Return an associated client by its public key
+    
+    args:
+        - client_pubkey: the client's public key
+    """
     def _get_client(self, client_pubkey):
+        #print(self._clients)
         peer = self._clients.get(client_pubkey)
         if peer is not None:
             return peer
 
         raise Exception(f'Client not associated: {client_pubkey})')
 
-
     """
-    Associate a client using its public key
+    Associate a client using its public key and return the public key that the
+    client should use to associate, thereby completing the key exchange.
 
     args:
         - pubkey: the client's serialized public key
         - salt:   a bytestring, preferably os.urandom(16), sent by the client
                   initiating communication, to be used as salt for the cipher. 
-
-    returns:
-        - server_pubkey: the public key that the client should use for
-                         associating with the server so the correct shared
-                         cipher is generated.
     """
     def associate(self, pubkey, salt):
         print(f'Associating client: {pubkey}')
@@ -126,7 +161,7 @@ class NQCryptoServer(NQCryptoClient):
         return server_pubkey
 
     """
-    Encrypt a message
+    Encrypt a message for a client identified by its public key
 
     args:
         - message: the message to be encrypted
@@ -136,37 +171,12 @@ class NQCryptoServer(NQCryptoClient):
         return self._get_client(pubkey).encrypt(message)
 
     """
-    Decrypt a message
+    Decrypt a message for a client identified by its public key
+
+    args:
         - message: the message to be decrypted
         - pubkey: the client's serialized public key
     """
     def decrypt(self, message, pubkey):
         return self._get_client(pubkey).decrypt(message)
-
-if __name__ == '__main__':
-    server = NQCryptoServer()
-
-    # Associate client A
-    clientA = NQCryptoClient()
-    salt = os.urandom(16)
-    clientA_pubkey = clientA.get_public_key()
-    server_pubkey = server.associate(clientA_pubkey, salt)
-    clientA.associate(server_pubkey, salt)
-
-    enc = server.encrypt('message from server to A', pubkey=clientA_pubkey)
-    print(clientA.decrypt(enc))
-    enc = clientA.encrypt('message from A to server')
-    print(server.decrypt(enc, pubkey=clientA_pubkey))
-
-    # Associate client B
-    clientB = NQCryptoClient()
-    salt = os.urandom(16)
-    clientB_pubkey = clientB.get_public_key()
-    server_pubkey = server.associate(clientB_pubkey, salt)
-    clientB.associate(server_pubkey, salt)
-
-    enc = server.encrypt('message from server to B', pubkey=clientB_pubkey)
-    print(clientB.decrypt(enc))
-    enc = clientB.encrypt('message from B to server')
-    print(server.decrypt(enc, pubkey=clientB_pubkey))
 

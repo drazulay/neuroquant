@@ -1,3 +1,3 @@
-from .crypto import NQCryptoPeer
+from .crypto import NQCryptoClient, NQCryptoServer
 
-__all__ = [NQCryptoPeer]
+__all__ = [NQCryptoClient, NQCryptoServer]

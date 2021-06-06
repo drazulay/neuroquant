@@ -16,7 +16,7 @@ class NQDispatcher(object):
         self.global_commands = ["init", "help", "quit", "back"]
 
     def dispatch(self, data):
-        query = data.get('query')
+        query = data.get('query').split(' ')
         section = data.get('section')
 
         op = query.pop(0)
@@ -39,12 +39,10 @@ class NQDispatcher(object):
         return self.create_message(data.get('section'),
                 result=command_instance.execute(*args, **kwargs))
 
-    def create_message(self, section, query=[], result={}):
-        return {"commands": self.command_tree.get_commands(section),
-                "query": query,
-                "result": result,
-                "prompt": f'({section})> ',
-                "section": section}
+    def create_message(self, section, result={}):
+        return (section,
+                self.command_tree.get_commands(section),
+                result)
 
     def handle_global_command(self, cmd, data):
         section = data.get('section')
@@ -66,10 +64,10 @@ class NQDispatcher(object):
         if cmd == 'help':
             commands = [*self.command_tree.get_commands(section).keys()]
             commands += self.global_commands
-            data['result'] = {
-                    "commands": commands,
-                    "sections": self.command_tree.get_sections()}
-            return data
+            sections = self.command_tree.get_sections()
+            return self.create_message(
+                    section,
+                    result={"commands": commands, "sections": sections})
 
     def parse_query_args(self, query):
         args = []

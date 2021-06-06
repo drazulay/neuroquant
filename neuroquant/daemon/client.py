@@ -1,5 +1,8 @@
 import asyncio
+import os
 import pickle
+
+from ..crypto import NQCryptoClient
 
 
 """
@@ -15,58 +18,84 @@ class NQClient(object):
 
     def __init__(self, config):
         self.config = config
+        self.crypto = NQCryptoClient()
 
     """
     Async event loop
     """
-    async def main(self, data):
+    async def main(self):
         factory = lambda: NQClientProto(data, future)
         loop = asyncio.get_running_loop()
 
-        while True:
-            # skipped once to get an initial set of data to initialize the client
-            # with by sending an 'init' query
-            query = data.get('query')
-            if not len(query) or query[0] != 'init':
-                data["query"] = input(f'{data.get("prompt")}').split(' ')
+        message = {"query": None,
+                   "errors": None,
+                   "result": None,
+                   "section": 'nq',}
 
-            data = pickle.dumps(data)
+        data = {"handshake": True,
+                "message": message,
+                "pubkey": self.crypto.get_public_key(),
+                "salt": os.urandom(16),
+                "stop": False,}
+
+        while True:
             future = loop.create_future()
 
-            # wait for protocol to couple with transport
+            # wait for connection
             trans, proto = await loop.create_connection(factory,
                     self.config.get('client_address'),
                     self.config.get('client_port'))
 
-            # wait for data
+            # wait for data from server
             await future
 
             data = pickle.loads(future.result())
+            #print(f'DATA: {data}')
 
-            result = data.get('result')
-            if result.get('quit'):
+            # stop querying the server plz
+            if data.get('stop'):
+                print('Stop signal received from server')
                 break
-            elif result.get('init'):
-                print('client initialized')
-            else:
-                # show data received
-                # todo
-                # - get 'renderer' to use from received data and use that to
-                #   render the result in the way the server intends
+
+            # finish handshake
+            if data.get('handshake'):
+                pk = self.crypto.associate(data.get('pubkey'), data.get('salt'))
+                data["pubkey"] = pk
+                print('Secure channel established')
+                data['handshake'] = False
+                data['salt'] = None
+                continue
+
+            message = self.crypto.decrypt(data.get('message'))
+            #print(message)
+
+            # maybe there are some errors to display
+            errors = message.get('errors')
+            if hasattr(errors, '__iter__') and len(errors):
+                for e in errors:
+                    print(f'error: {e}')
+
+            result = message.get('result')
+            if hasattr(result, '__iter__') and len(result):
+                # todo: result renderers
                 print(result)
 
-        print('goodbye.')
+            query = input(f'({message.get("section")})> ')
+
+            message['query'] = query
+            data["message"] = self.crypto.encrypt(message)
+
+        print('Goodbye.')
 
     """
     Start responding to messages
+
+    todo:
+        - compression
+        - identify as user or as bot, each gets different sets of commands
     """
     def start(self):
-        # todo:
-        # - encrypt communication
-        # - sign messages w. hmac
-        # - compression
-        # - identify as user or as bot, each gets different sets of commands
-        asyncio.run(self.main({'query': ['init'], 'result': {}}))
+        asyncio.run(self.main())
 
 
 """
@@ -105,7 +134,7 @@ class NQClientProto(asyncio.Protocol):
     """
     def connection_made(self, transport):
         self.transport = transport
-        transport.write(self.data)
+        transport.write(pickle.dumps(self.data))
 
     """
     Callback triggered when a connection is lost
