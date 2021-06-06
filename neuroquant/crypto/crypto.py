@@ -65,8 +65,8 @@ class NQCryptoPeer(object):
         time.sleep(1.0 / sum(list(os.urandom(32))))
         print(f'Public key: {self.get_public_key()}')
 
-    def create_cipher_key(self, salt):
-            print('Creating shared cipher key..')
+    def create_cipher(self, salt):
+            print('Creating shared cipher..')
             # derive key
             kdf = HKDF(
                 algorithm=hashes.SHA256(),
@@ -75,9 +75,9 @@ class NQCryptoPeer(object):
                 info=None,
             )
             derived_key = kdf.derive(self._shared_key)
-            
+            cipher = Fernet(base64.urlsafe_b64encode(derived_key))           
             time.sleep(1.0 / sum(list(os.urandom(32))))
-            return base64.urlsafe_b64encode(derived_key)
+            return cipher
 
     def get_public_key(self, serialized=True):
         if serialized:
@@ -103,7 +103,7 @@ class NQCryptoPeer(object):
         # diffie-hellman key exchange
         self._shared_key = self._privkey.exchange(peer_pubkey)
         time.sleep(1.0 / sum(list(os.urandom(32))))
-        self._peers[pubkey] = self.create_cipher_key(salt)
+        self._peers[pubkey] = self.create_cipher(salt)
         time.sleep(1.0 / sum(list(os.urandom(32))))
 
         return self.get_public_key()
@@ -112,16 +112,14 @@ class NQCryptoPeer(object):
     Encrypt a message for peer to which peer_pubkey belongs
     """
     def encrypt(self, data, peer_pubkey=None):
-        cipher_key = self._get_peer(peer_pubkey)
-        f = Fernet(cipher_key)
+        cipher = self._get_peer(peer_pubkey)
         return f.encrypt(pickle.dumps(data))
 
     """
     Decrypt a message from peer to which peer_pubkey belongs
     """
     def decrypt(self, data, peer_pubkey=None):
-        cipher_key = self._get_peer(peer_pubkey)
-        f = Fernet(cipher_key)
+        cipher = self._get_peer(peer_pubkey)
         return pickle.loads(f.decrypt(data))
 
 if __name__ == '__main__':
