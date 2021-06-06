@@ -59,14 +59,18 @@ class NQClient(object):
 
             # finish handshake
             if data.get('handshake'):
-                pk = self.crypto.associate(data.get('pubkey'), data.get('salt'))
-                data["pubkey"] = pk
+                data["pubkey"] = self.crypto.associate(
+                        data.get('pubkey'),
+                        data.get('salt'))
+
                 print('Secure channel established')
+
                 data['handshake'] = False
                 data['salt'] = None
-                continue
-
-            message = self.crypto.decrypt(data.get('message'))
+            
+            message = data.get('message')
+            if type(message) is bytes:
+                message = self.crypto.decrypt(message)
             #print(message)
 
             # maybe there are some errors to display

@@ -20,6 +20,7 @@ class NQServer(object):
         self.config = config
 
     async def main(self):
+        print(f'Starting server..')
         loop = asyncio.get_running_loop()
 
         command_tree = NQCommandTree(self.config)
@@ -28,11 +29,12 @@ class NQServer(object):
         crypto = NQCryptoServer()
         factory = lambda: NQServerProto(NQDispatcher(command_tree), crypto)
 
-        server = await loop.create_server(factory,
-                self.config.get('server_address'),
-                self.config.get('server_port'))
+        host = self.config.get('server_address')
+        port = self.config.get('server_port')
+        server = await loop.create_server(factory, host, port)
 
         async with server:
+            print(f'Listening for connections on {host}:{port}')
             await server.serve_forever()
 
     def start(self):
