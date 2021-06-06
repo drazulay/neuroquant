@@ -13,7 +13,7 @@ class NQDispatcher(object):
 
     def __init__(self, command_tree):
         self.command_tree = command_tree
-        self.global_commands = ["init", "help", "quit", "back"]
+        self.global_commands = ["help", "quit", "back"]
 
     def dispatch(self, data):
         query = data.get('query').split(' ')
@@ -46,10 +46,6 @@ class NQDispatcher(object):
 
     def handle_global_command(self, cmd, data):
         section = data.get('section')
-
-        if cmd == 'init':
-            section = self.command_tree.get_root().get_section()
-            return self.create_message(section, result={"init": True})
 
         if cmd == 'quit':
             return self.create_message(section, result={"quit": True})
