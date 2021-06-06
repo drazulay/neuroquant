@@ -47,7 +47,6 @@ class NQCryptoPeer(object):
 
         self._generate_keypair()
 
-
     def _get_peer(self, peer_pubkey):
         peer = self._peers.get(peer_pubkey)
         if peer is None:
@@ -57,15 +56,18 @@ class NQCryptoPeer(object):
     def _load_peer_pubkey(self, peer_pubkey):
         return serialization.load_der_public_key(peer_pubkey)
 
+    def _randomsleep(self):
+        time.sleep(1.0 / sum(list(os.urandom(32))))
+
     def _generate_keypair(self, salt=b'nq'):
         print('Generating keypair..')
         self._privkey = X25519PrivateKey.generate()
-        time.sleep(1.0 / sum(list(os.urandom(32))))
+        self._randomsleep()
         self._pubkey = self._privkey.public_key()
-        time.sleep(1.0 / sum(list(os.urandom(32))))
+        self._randomsleep()
         print(f'Public key: {self.get_public_key()}')
 
-    def create_cipher(self, salt):
+    def create_cipher(self, shared_key, salt):
             print('Creating shared cipher..')
             # derive key
             kdf = HKDF(
@@ -74,9 +76,9 @@ class NQCryptoPeer(object):
                 salt=salt,
                 info=None,
             )
-            derived_key = kdf.derive(self._shared_key)
+            derived_key = kdf.derive(shared_key)
             cipher = Fernet(base64.urlsafe_b64encode(derived_key))           
-            time.sleep(1.0 / sum(list(os.urandom(32))))
+            self._randomsleep()
             return cipher
 
     def get_public_key(self, serialized=True):
@@ -101,10 +103,10 @@ class NQCryptoPeer(object):
         peer_pubkey = self._load_peer_pubkey(pubkey)
         print('Performing Diffie-Hellman exchange..')
         # diffie-hellman key exchange
-        self._shared_key = self._privkey.exchange(peer_pubkey)
-        time.sleep(1.0 / sum(list(os.urandom(32))))
-        self._peers[pubkey] = self.create_cipher(salt)
-        time.sleep(1.0 / sum(list(os.urandom(32))))
+        shared_key = self._privkey.exchange(peer_pubkey)
+        self._randomsleep()
+        self._peers[pubkey] = self.create_cipher(salt, shared_key)
+        self._randomsleep()
 
         return self.get_public_key()
 
