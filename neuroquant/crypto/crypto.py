@@ -17,9 +17,7 @@ This class represents a client that wishes to engage in encrypted communication
 with a server.
 """
 class NQCryptoClient(object):
-    def __init__(self, label=''):
-        self.label = label
-
+    def __init__(self):
         self._privkey = self._create_privkey()
         self._pubkey = self._privkey.public_key()
 
@@ -93,7 +91,7 @@ keys, using unique keypairs for the key exchanges with each of them.
 """
 class NQCryptoServer(NQCryptoClient):
     def __init__(self, *args, **kwargs):
-        self._clients = {} # Holds associated clients indexed by pubkey
+        self._clients = {}
 
         super().__init__(*args, **kwargs)
 
@@ -102,7 +100,7 @@ class NQCryptoServer(NQCryptoClient):
         if peer is not None:
             return peer
 
-        raise Exception(f'Client not associated (public key: {client_pubkey})')
+        raise Exception(f'Client not associated: {client_pubkey})')
 
 
     """
@@ -119,7 +117,7 @@ class NQCryptoServer(NQCryptoClient):
                          cipher is generated.
     """
     def associate(self, pubkey, salt):
-        print(f'Associating client with public key: {pubkey}')
+        print(f'Associating client: {pubkey}')
         client = NQCryptoClient()
         server_pubkey = client.associate(pubkey, salt)
         self._clients[pubkey] = client
@@ -148,7 +146,7 @@ if __name__ == '__main__':
     server = NQCryptoServer()
 
     # Associate client A
-    clientA = NQCryptoClient('ClientA')
+    clientA = NQCryptoClient()
     salt = os.urandom(16)
     clientA_pubkey = clientA.get_public_key()
     server_pubkey = server.associate(clientA_pubkey, salt)
@@ -160,7 +158,7 @@ if __name__ == '__main__':
     print(server.decrypt(enc, pubkey=clientA_pubkey))
 
     # Associate client B
-    clientB = NQCryptoClient('ClientB')
+    clientB = NQCryptoClient()
     salt = os.urandom(16)
     clientB_pubkey = clientB.get_public_key()
     server_pubkey = server.associate(clientB_pubkey, salt)
