@@ -50,12 +50,12 @@ class NQCryptoClient(object):
                     self._unserialize_pubkey(self._assoc_pubkey)))))           
 
     """
-    Associate a peer's public key and create a Fernet cipher for it
+    Associate a server using its public key
 
     args:
-        - peer_pubkey: the peer's serialized public key
-        - salt:        sent by the peer initiating communication
-                       should be generated using os.urandom(16)
+        - pubkey: the server's serialized public key
+        - salt:   a bytestring, preferably os.urandom(16), sent by the client
+                  initiating communication, to be used as salt for the cipher. 
     """
     def associate(self, pubkey, salt):
         self._assoc_pubkey = pubkey
@@ -83,6 +83,7 @@ class NQCryptoClient(object):
 
         return self._pubkey
 
+
 """
 NQCryptoServer
 
@@ -104,7 +105,7 @@ class NQCryptoServer(NQCryptoClient):
 
 
     """
-    Associate a client's public key to an new NQCryptoClient instance.
+    Associate a client using its public key
 
     args:
         - pubkey: the client's serialized public key
