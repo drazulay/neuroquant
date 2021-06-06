@@ -75,12 +75,12 @@ class NQClient(object):
 
             # maybe there are some errors to display
             errors = message.get('errors')
-            if hasattr(errors, '__iter__') and len(errors):
+            if type(errors) is list and len(errors):
                 for e in errors:
                     print(f'error: {e}')
 
             result = message.get('result')
-            if hasattr(result, '__iter__') and len(result):
+            if type(result) is dict and len(result):
                 # todo: result renderers
                 print(result)
 
