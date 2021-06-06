@@ -94,6 +94,7 @@ class NQCryptoPeer(object):
 
     TODO: Use a different keypair with each peer to prevent patterns in the
           encrypted data. Is this still a thing with Fernet (uses HMAC)?
+          -- obviously we need this, otherwise it wont work with n>2 peers
 
     The salt should be sent by the peer initiating communication, preferably by
     using os.urandom(16). It must be used by both peers to create the fernet
