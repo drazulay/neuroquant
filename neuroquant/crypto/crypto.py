@@ -11,75 +11,71 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 
 """
-NQCryptoPeer
+NQCryptoClient
 
 This class represents a peer that wishes to engage in encrypted communication
-with other peers.
-
-Explanation:
-    I hope... this implements an elleptic curve diffie-hellman ephemeral type
-    key exchange (ECDHE).
-
-    see: https://en.wikipedia.org/wiki/Elliptic-curve_Diffie%E2%80%93Hellman
-
-    Two peers, Peer A and Peer B, both instantiate an NQCryptoPeer object.
-
-    Peer A calls NQCryptoPeer.get_public_key() to get its public key and then
-    sends this public key to Peer B.
-
-    Peer B then calls NQCrypto.exchange() with the public key received from
-    Peer A. This method will store Peer B's shared secret locally and then
-    return another public key, which Peer B will send back to Peer A.
-
-    Peer A will now also call NQCrypto.exchange() but with Peer B's public key,
-    to store Peer A's version of the shared secret locally.
-
-    At this point both peers should have the same shared secret stored locally.
-    This shared secret has been turned into identical fernet keys that both
-    peers can use to encrypt and decrypt messages from each other.
+with a single peer.
 """
-class NQCryptoPeer(object):
-    def __init__(self, peers={}, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+class NQCryptoClient(object):
+    def __init__(self, label=''):
+        self.label = label
 
-        self._peers = peers
-        self._shared_key = None
+        self._privkey = self._create_privkey()
+        self._pubkey = self._privkey.public_key()
 
-        self._generate_keypair()
-
-    def _get_peer(self, peer_pubkey):
-        peer = self._peers.get(peer_pubkey)
-        if peer is None:
-            raise Exception(f'Handshake not performed for key: {peer_pubkey}')
-        return peer
-
-    def _load_peer_pubkey(self, peer_pubkey):
-        return serialization.load_der_public_key(peer_pubkey)
+        self._cipher = None
+        self._assoc_pubkey = None
 
     def _randomsleep(self):
         time.sleep(1.0 / sum(list(os.urandom(32))))
 
-    def _generate_keypair(self, salt=b'nq'):
-        print('Generating keypair..')
-        self._privkey = X25519PrivateKey.generate()
-        self._randomsleep()
-        self._pubkey = self._privkey.public_key()
-        self._randomsleep()
-        print(f'Public key: {self.get_public_key()}')
+    def _unserialize_pubkey(self, pubkey):
+        return serialization.load_der_public_key(pubkey)
 
-    def create_cipher(self, shared_key, salt):
-            print('Creating shared cipher..')
-            # derive key
-            kdf = HKDF(
-                algorithm=hashes.SHA256(),
-                length=32,
-                salt=salt,
-                info=None,
-            )
-            derived_key = kdf.derive(shared_key)
-            cipher = Fernet(base64.urlsafe_b64encode(derived_key))           
-            self._randomsleep()
-            return cipher
+    def _create_privkey(self):
+        self._randomsleep()
+        return X25519PrivateKey.generate()
+
+    def _create_cipher(self,
+            salt,
+            length=32,
+            algorithm=hashes.SHA256(),
+            info=None):
+
+        self._randomsleep()
+        return Fernet(base64.urlsafe_b64encode(HKDF(
+            algorithm=algorithm,
+            length=length,
+            salt=salt,
+            info=info).derive(
+                self._privkey.exchange(
+                    self._unserialize_pubkey(self._assoc_pubkey)))))           
+
+    """
+    Associate a peer's public key and create a Fernet cipher for it
+
+    args:
+        - peer_pubkey: the peer's serialized public key
+        - salt:        sent by the peer initiating communication
+                       should be generated using os.urandom(16)
+    """
+    def associate(self, pubkey, salt):
+        self._assoc_pubkey = pubkey
+        self._cipher = self._create_cipher(salt)
+
+        return self.get_public_key()
+
+    """
+    Encrypt a message
+    """
+    def encrypt(self, message):
+        return self._cipher.encrypt(pickle.dumps(message))
+
+    """
+    Decrypt a message
+    """
+    def decrypt(self, message):
+        return pickle.loads(self._cipher.decrypt(message))
 
     def get_public_key(self, serialized=True):
         if serialized:
@@ -89,52 +85,89 @@ class NQCryptoPeer(object):
 
         return self._pubkey
 
-    """
-    Exchange public keys for diffie-helmann exchange
+"""
+NQCryptoServer
 
-    TODO: Use a different keypair with each peer to prevent patterns in the
-          encrypted data. Is this still a thing with Fernet (uses HMAC)?
-          -- obviously we need this, otherwise it wont work with n>2 peers
+This class can associate with multiple peers by their public keys, using unique
+keypairs for the key exchanges with each of them.
+"""
+class NQCryptoServer(NQCryptoClient):
+    def __init__(self, *args, **kwargs):
+        self._clients = {} # Holds associated clients indexed by pubkey
 
-    The salt should be sent by the peer initiating communication, preferably by
-    using os.urandom(16). It must be used by both peers to create the fernet
-    key.
-    """
-    def exchange(self, pubkey, salt=b'nq'):
-        peer_pubkey = self._load_peer_pubkey(pubkey)
-        print('Performing Diffie-Hellman exchange..')
-        # diffie-hellman key exchange
-        shared_key = self._privkey.exchange(peer_pubkey)
-        self._randomsleep()
-        self._peers[pubkey] = self.create_cipher(salt, shared_key)
-        self._randomsleep()
+        super().__init__(*args, **kwargs)
 
-        return self.get_public_key()
+    def _get_client(self, client_pubkey):
+        peer = self._clients.get(client_pubkey)
+        if peer is not None:
+            return peer
+
+        raise Exception(f'Client not associated (public key: {client_pubkey})')
+
 
     """
-    Encrypt a message for peer to which peer_pubkey belongs
+    Associate a client's public key to an new NQCryptoClient instance.
+
+    args:
+        - pubkey: the client's serialized public key
+        - salt:   a bytestring, preferably os.urandom(16), sent by the client
+                  initiating communication, to be used as salt for the cipher. 
+
+    returns:
+        - server_pubkey: the public key that the client should use for
+                         associating with the server so the correct shared
+                         cipher is generated.
     """
-    def encrypt(self, data, peer_pubkey=None):
-        cipher = self._get_peer(peer_pubkey)
-        return cipher.encrypt(pickle.dumps(data))
+    def associate(self, pubkey, salt):
+        print(f'Associating client with public key: {pubkey}')
+        client = NQCryptoClient()
+        server_pubkey = client.associate(pubkey, salt)
+        self._clients[pubkey] = client
+
+        return server_pubkey
 
     """
-    Decrypt a message from peer to which peer_pubkey belongs
+    Encrypt a message
+
+    args:
+        - message: the message to be encrypted
+        - pubkey: the client's serialized public key
     """
-    def decrypt(self, data, peer_pubkey=None):
-        cipher = self._get_peer(peer_pubkey)
-        return pickle.loads(cipher.decrypt(data))
+    def encrypt(self, message, pubkey):
+        return self._get_client(pubkey).encrypt(message)
+
+    """
+    Decrypt a message
+        - message: the message to be decrypted
+        - pubkey: the client's serialized public key
+    """
+    def decrypt(self, message, pubkey):
+        return self._get_client(pubkey).decrypt(message)
 
 if __name__ == '__main__':
-    peerA = NQCryptoPeer()
-    peerB = NQCryptoPeer()
+    server = NQCryptoServer()
 
-    pubB = peerB.exchange(peerA.get_public_key())
-    pubA = peerA.exchange(peerB.get_public_key())
+    # Associate client A
+    clientA = NQCryptoClient('ClientA')
+    salt = os.urandom(16)
+    clientA_pubkey = clientA.get_public_key()
+    server_pubkey = server.associate(clientA_pubkey, salt)
+    clientA.associate(server_pubkey, salt)
 
-    enc = peerA.encrypt('hello', peer_pubkey=pubB)
-    print(enc)
-    dec = peerB.decrypt(enc, peer_pubkey=pubA)
-    print(dec)
+    enc = server.encrypt('message from server to A', pubkey=clientA_pubkey)
+    print(clientA.decrypt(enc))
+    enc = clientA.encrypt('message from A to server')
+    print(server.decrypt(enc, pubkey=clientA_pubkey))
 
+    # Associate client B
+    clientB = NQCryptoClient('ClientB')
+    salt = os.urandom(16)
+    clientB_pubkey = clientB.get_public_key()
+    server_pubkey = server.associate(clientB_pubkey, salt)
+    clientB.associate(server_pubkey, salt)
+
+    enc = server.encrypt('message from server to B', pubkey=clientB_pubkey)
+    print(clientB.decrypt(enc))
+    enc = clientB.encrypt('message from B to server')
+    print(server.decrypt(enc, pubkey=clientB_pubkey))
 
