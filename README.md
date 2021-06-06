@@ -13,27 +13,30 @@ Will do stuff on binance so I don't have to
 Client:
 ```
 drazulay@dmbp Developer/drazulay/nq (git)-[master] % python neuroquant.py
-client initialized
+Secure channel established
 (nq)> help
 {'commands': ['info', 'iddqd', 'idkfa', 'init', 'help', 'quit', 'back'], 'sections': ['nq', 'ml', 'binance']}
-(nq)> idkfa name=daniel
-{'result': 'daniel now has all keys and full ammo!'}
+(nq)> iddqd name=Daniel
+{'result': 'Daniel now has God Mode!'}
+(nq)>
 ```
 
 Server:
 ```
-drazulay@dmbp Developer/drazulay/nq (git)-[master] % python neuroquant.py --daemon                                                    :(
-[127.0.0.1:61646] connected
-[127.0.0.1:61646] processing query: init
-[127.0.0.1:61646] disconnected
-[127.0.0.1:61647] connected
-[127.0.0.1:61647] processing query: help
-[127.0.0.1:61647] disconnected
-[127.0.0.1:61648] connected
-[127.0.0.1:61648] processing query: idkfa name=daniel
-{'description': 'Keys, full ammo', 'class': 'NQCommandEaster', 'method': 'idkfa', 'args': [], 'kwargs': {'name': '!str'}}
-() {'name': 'daniel'}
-[127.0.0.1:61648] disconnected
+drazulay@dmbp Developer/drazulay/nq (git)-[master] % python neuroquant.py --daemon
+Starting server..
+Listening for connections on 127.0.0.1:8181
+[127.0.0.1:53735] connected
+Associating client: b'0*0\x05\x06\x03+en\x03!\x00f\xf7+\xe4\x01\xd2\xfe\xef\x07\xfd\xa4\xfb\xc0-vcud\x1fk\xeb\x87A\x92\xfd\xd2d"\x0b\xe1\x82b'
+[127.0.0.1:53735] disconnected
+[127.0.0.1:53736] connected
+[127.0.0.1:53736] processing query: help
+[127.0.0.1:53736] disconnected
+[127.0.0.1:53737] connected
+[127.0.0.1:53737] processing query: iddqd name=Daniel
+{'description': 'God mode', 'class': 'NQCommandEaster', 'method': 'iddqd', 'args': [], 'kwargs': {'name': '!str'}}
+() {'name': 'Daniel'}
+[127.0.0.1:53737] disconnected
 ```
 
 ## TODO (non-exhaustive)
@@ -59,8 +62,6 @@ Found in source:
 
 /daemon/client.py:
 - get 'renderer' to use from received data and use that to render the result in the way the server intends
-- encrypt communication
-- sign messages w. hmac
 - compression
 - identify as user or as bot, each gets different sets of commands
 
