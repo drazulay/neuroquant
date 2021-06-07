@@ -26,11 +26,11 @@ class NQServer(object):
         command_tree = NQCommandTree(self.config)
         command_tree.load()
         
-        crypto = NQCryptoServer()
+        crypto = NQCryptoServer(self.config)
         factory = lambda: NQServerProto(NQDispatcher(command_tree), crypto)
 
-        host = self.config.get('server_address')
-        port = self.config.get('server_port')
+        host = self.config.get('host_address')
+        port = self.config.get('host_port')
         server = await loop.create_server(factory, host, port)
 
         async with server:
@@ -82,16 +82,13 @@ class NQServerProto(asyncio.Protocol):
 
             query = message.get('query')
 
-            if query:
+            if query == 'save_client_keys':
+                message["result"] = {"save_client_keys": True}
+            else:
                 try:
                     print(f'[{self.client_host}:{self.client_port}] processing query: {query}')
 
-                    sec, cmds, res = self.dispatcher.dispatch(message)
-
-                    message['section'] = sec
-                    message['result'] = res
-                    message['commands'] = cmds
-
+                    message = self.dispatcher.dispatch(message)
                 except Exception as e:
                     errors = [e]
                     message['errors'] = errors

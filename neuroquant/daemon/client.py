@@ -1,8 +1,10 @@
 import asyncio
 import os
 import pickle
+import readline
 
 from ..crypto import NQCryptoClient
+
 
 
 """
@@ -18,7 +20,22 @@ class NQClient(object):
 
     def __init__(self, config):
         self.config = config
-        self.crypto = NQCryptoClient()
+        self.crypto = NQCryptoClient(config)
+        self.host = config.get('host_address')
+        self.port = config.get('host_port')
+
+        self.commands = []
+
+        readline.parse_and_bind('tab: complete')
+        readline.set_completer(self._complete)
+
+    def _complete(self, text, state):
+        for command in self.commands:
+            if command.startswith(text):
+                if state:
+                    state -=1
+                else:
+                    return command
 
     """
     Async event loop
@@ -42,9 +59,8 @@ class NQClient(object):
             future = loop.create_future()
 
             # wait for connection
-            trans, proto = await loop.create_connection(factory,
-                    self.config.get('client_address'),
-                    self.config.get('client_port'))
+            trans, proto = await loop.create_connection(factory, self.host,
+                    self.port)
 
             # wait for data from server
             await future
@@ -63,15 +79,21 @@ class NQClient(object):
                         data.get('pubkey'),
                         data.get('salt'))
 
-                print('Secure channel established')
+                print(f'Secure channel established to {self.host}:{self.port}')
 
                 data['handshake'] = False
                 data['salt'] = None
-            
+                # Needed to fill tab-complete help
+                data['message'] = {"section": "nq", "query": "help"}
+                continue
+
             message = data.get('message')
             if type(message) is bytes:
                 message = self.crypto.decrypt(message)
-            #print(message)
+
+            query = message.get('query')
+            if type(query) is list and len(query):
+                print(query)
 
             # maybe there are some errors to display
             errors = message.get('errors')
@@ -79,14 +101,34 @@ class NQClient(object):
                 for e in errors:
                     print(f'error: {e}')
 
+            commands = message.get('commands')
+            if type(commands) is list and len(commands):
+                self.commands = commands
+
             result = message.get('result')
             if type(result) is dict and len(result):
-                # todo: result renderers
-                print(result)
+                if "quit" in result:
+                    break
+                # save X25519 keys for reuse
+                elif "save_client_keys" in result:
+                    self.config.write('auth', self.crypto.save_keys())
+                else:
+                    print(result)
+            
+            section = message.get('section')
+            try:
+                query = input(f'({message.get("section")})> ')
+                message['query'] = query
+            except EOFError:
+                if section == 'nq':
+                    print ('Gracefully exiting..')
+                    message['query'] = 'quit'
+                else:
+                    print ("\n")
+                    message['query'] = 'back'
 
-            query = input(f'({message.get("section")})> ')
+            message["result"] = None
 
-            message['query'] = query
             data["message"] = self.crypto.encrypt(message)
 
         print('Goodbye.')

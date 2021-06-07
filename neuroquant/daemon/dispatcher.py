@@ -21,17 +21,17 @@ class NQDispatcher(object):
 
         op = query.pop(0)
 
+        commands = self.get_commands(section)
+        sections = self.command_tree.get_sections()
+        if op not in [*commands] and op not in [*sections]:
+            raise ValueError(
+                    f'query {op} not valid for section {section}')
+
         if op in self.global_commands:
             return self.handle_global_command(op, data)
 
-        sections = self.command_tree.get_sections()
         if op in [*sections]:
             return self.create_message(op)
-
-        commands = self.command_tree.get_commands(section)
-        if op not in [*commands]:
-            raise ValueError(
-                    f'query {op} not valid for section {section}')
 
         command_instance = commands[op]
         args, kwargs = self.parse_query_args(query)
@@ -39,10 +39,15 @@ class NQDispatcher(object):
         return self.create_message(data.get('section'),
                 result=command_instance.execute(*args, **kwargs))
 
+    def get_commands(self, section):
+            commands = [*self.command_tree.get_commands(section)]
+            commands += self.global_commands
+            return commands
+
     def create_message(self, section, result={}):
-        return (section,
-                self.command_tree.get_commands(section),
-                result)
+        return {"section": section,
+                "commands": self.get_commands(section),
+                "result": result}
 
     def handle_global_command(self, cmd, data):
         section = data.get('section')
@@ -58,12 +63,11 @@ class NQDispatcher(object):
         # - pretty output with full help
         # - help on keyword
         if cmd == 'help':
-            commands = [*self.command_tree.get_commands(section).keys()]
-            commands += self.global_commands
             sections = self.command_tree.get_sections()
             return self.create_message(
                     section,
-                    result={"commands": commands, "sections": sections})
+                    result={"commands": self.get_commands(section),
+                        "sections": sections})
 
     def parse_query_args(self, query):
         args = []

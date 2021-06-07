@@ -40,9 +40,10 @@ class NQCommand(object):
 
         # cast to specified data types
         for k, mod in self.definition.get('kwargs').items():
+            if k not in kwargs:
             # if the ! modifier is present the keyword argument is required
-            if mod.find('!') >= 0 and k not in kwargs:
-                errors.append(f'keyword argument {k} is required')
+                if mod.find('!') >= 0:
+                    errors.append(f'keyword argument {k} is required')
                 continue
 
             # arg value

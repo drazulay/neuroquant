@@ -18,9 +18,12 @@ with a server.
 """
 class NQCryptoClient(object):
 
-    def __init__(self):
+    def __init__(self, config):
+        self.config = config
+
         self._privkey = self._create_privkey()
         self._pubkey = self._privkey.public_key()
+        self._pubkey_id = base64.urlsafe_b64encode(self.get_public_key())
 
         self._cipher = None
         self._assoc_pubkey = None
@@ -60,6 +63,39 @@ class NQCryptoClient(object):
         #print(f'DECRYPT: {message}')
         if self._cipher is not None:
             return pickle.loads(self._cipher.decrypt(message))
+
+    """
+    Saves keys to disk
+    """
+    def save_keys(self, key_type='client'):
+        path = os.path.join('keys', key_type)
+        os.makedirs(path, exist_ok=True)
+        
+        pubkey = self.get_public_key()
+        pubsp = os.path.join(path, f'{self._pubkey_id}.pub')
+        print(f'Saving {key_type} public key to: {pubsp}')
+        with open(pubsp, 'w+b') as fp:
+            fp.write(pubkey)
+            fp.close
+
+        privkey = self.get_private_key()
+        privsp = os.path.join(path, f'{self._pubkey_id}')
+        print(f'Saving {key_type} private key to: {privsp}')
+        with open(privsp, 'w+b') as fp:
+            fp.write(privkey)
+            fp.close
+
+        return {"public_keyfile": pubsp, "private_keyfile": privsp}
+        
+
+    """
+    Return the private key
+    """
+    def get_private_key(self):
+        return self._privkey.private_bytes(
+                format=serialization.PrivateFormat.PKCS8,
+                encoding=serialization.Encoding.DER,
+                encryption_algorithm=serialization.NoEncryption())
 
     """
     Return the public key that the server can use to associate with the client
@@ -154,7 +190,7 @@ class NQCryptoServer(NQCryptoClient):
     """
     def associate(self, pubkey, salt):
         print(f'Associating client: {pubkey}')
-        client = NQCryptoClient()
+        client = NQCryptoClient(self.config)
         server_pubkey = client.associate(pubkey, salt)
         self._clients[pubkey] = client
 
